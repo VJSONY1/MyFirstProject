@@ -1,20 +1,42 @@
 name: Build Android TV APK
-on: [push, workflow_dispatch]
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.9' }
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # GitHub's Ubuntu 24.04 image already includes the Android SDK.
+      # AGP 8.7.3 defaults to Build Tools 34.0.0; compileSdk is 35.
+      - name: Verify preinstalled Android SDK
+        shell: bash
+        run: |
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/34.0.0/aapt2"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+
       - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+        working-directory: TCL-Nature-Launcher
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
           name: NatureTVHome-v0.1.0-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: TCL-Nature-Launcher/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
